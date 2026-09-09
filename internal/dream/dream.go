@@ -170,6 +170,8 @@ func (a *LocalLLMAnalyser) Analyse(ctx context.Context, d Dream) (*DreamAnalysis
 					which person had which thing happen to them. This is crucial.
 
 					If a category has no information, return an empty array.
+					If there is no storyline to a dream, do not make one up. For example, if given the dream "This is a test dream",
+					do not make up a story where there is none.
 
 					Return ONLY the JSON object described by the response schema.
 					Do not use Markdown.
@@ -178,7 +180,7 @@ func (a *LocalLLMAnalyser) Analyse(ctx context.Context, d Dream) (*DreamAnalysis
 			},
 			{
 				Role:    "user",
-				Content: fmt.Sprintf("Analyse this dream: \n\n%s", d.RawText),
+				Content: fmt.Sprintf("Extract the information from this dream: \n\n%s", d.RawText),
 			},
 		},
 
