@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
 )
@@ -91,13 +92,17 @@ func (sr *SQLRepository) DeleteDream(id string) error {
 	return err
 }
 
-func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
+func (sr *SQLRepository) SaveDreamAnalysis(da dream.DreamAnalysis) error {
 	tx, err := sr.db.Begin()
 	if err != nil {
 		return err
 	}
 
 	defer tx.Rollback()
+
+	if err := sr.DeleteDreamAnalysis(da.DreamID); err != nil {
+		return err
+	}
 
 	_, err = tx.Exec(`
         INSERT INTO dream_analyses (
@@ -109,7 +114,7 @@ func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
 		return err
 	}
 
-	for _, theme := range da.Themes {
+	for _, theme := range uniqueStrings(da.Themes) {
 		_, err = tx.Exec(`
             INSERT INTO dream_themes (
                 dream_id, theme
@@ -121,7 +126,7 @@ func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
 		}
 	}
 
-	for _, emotion := range da.Emotions {
+	for _, emotion := range uniqueStrings(da.Emotions) {
 		_, err = tx.Exec(`
             INSERT INTO dream_emotions (
                 dream_id, emotion
@@ -133,7 +138,7 @@ func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
 		}
 	}
 
-	for _, location := range da.Locations {
+	for _, location := range uniqueStrings(da.Locations) {
 		_, err = tx.Exec(`
             INSERT INTO dream_locations (
                 dream_id, location
@@ -145,7 +150,7 @@ func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
 		}
 	}
 
-	for _, person := range da.People {
+	for _, person := range uniqueStrings(da.People) {
 		_, err = tx.Exec(`
 			INSERT INTO dream_people (
 			dream_id, person
@@ -157,7 +162,7 @@ func (sr *SQLRepository) CreateDreamAnalysis(da dream.DreamAnalysis) error {
 		}
 	}
 
-	for _, symbol := range da.Symbols {
+	for _, symbol := range uniqueStrings(da.Symbols) {
 		_, err = tx.Exec(`
 			INSERT INTO dream_symbols (
 			dream_id, symbol
@@ -251,6 +256,47 @@ func (sr *SQLRepository) GetDreamAnalysis(dreamID string) (*dream.DreamAnalysis,
 	return &da, nil
 }
 
+func (sr *SQLRepository) DeleteDreamAnalysis(dreamID string) error {
+	tx, err := sr.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM dream_analyses WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM dream_themes WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM dream_emotions WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM dream_locations WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM dream_people WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM dream_symbols WHERE dream_id = ?`, dreamID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func scanStrings(rows *sql.Rows) ([]string, error) {
 	defer rows.Close()
 	var result []string
@@ -267,4 +313,24 @@ func scanStrings(rows *sql.Rows) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	result := make([]string, 0, len(values))
+
+	for _, word := range values {
+		word = strings.TrimSpace(word)
+		if word == "" {
+			continue
+		}
+
+		if _, exists := seen[word]; exists == true {
+			continue
+		}
+
+		seen[word] = true
+		result = append(result, word)
+	}
+	return result
 }

@@ -6,6 +6,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"net/http"
 
 	"github.com/Eoghain2708/dreamreadr/cmd"
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	var analyser dream.DreamAnalyser
 	db, err := sql.Open("sqlite", "database.db")
 	if err != nil {
 		log.Fatal(err)
@@ -23,9 +25,13 @@ func main() {
 	defer db.Close()
 
 	repo := storage.NewSQLRepository(db)
-	analyser := dream.FakeAnalyser{}
+	analyser, err = dream.NewLocalLLMAnalyser(http.DefaultClient, "http://127.0.0.1:8080")
 
-	ds := service.NewDreamService(repo, &analyser)
+	if err != nil {
+		log.Fatalf("cannot create analyser")
+	}
+
+	ds := service.NewDreamService(repo, analyser)
 	cmd.SetDreamService(ds)
 	cmd.Execute()
 }

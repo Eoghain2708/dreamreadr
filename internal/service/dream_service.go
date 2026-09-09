@@ -57,12 +57,12 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 		return nil, err
 	}
 
-	err = s.repo.CreateDreamAnalysis(analysis)
+	err = s.repo.SaveDreamAnalysis(*analysis)
 	if err != nil {
 		return nil, err
 	}
 
-	return &analysis, nil
+	return analysis, nil
 }
 
 func (s *DreamService) GetDreamAnalysis(dreamID string) (*dream.DreamAnalysis, error) {
