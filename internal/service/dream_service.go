@@ -11,10 +11,11 @@ import (
 type DreamService struct {
 	repo     dream.DreamRepository
 	analyser dream.DreamAnalyser
+	embedder dream.DreamEmbedder
 }
 
-func NewDreamService(repo dream.DreamRepository, analyser dream.DreamAnalyser) *DreamService {
-	return &DreamService{repo: repo, analyser: analyser}
+func NewDreamService(repo dream.DreamRepository, analyser dream.DreamAnalyser, embedder dream.DreamEmbedder) *DreamService {
+	return &DreamService{repo: repo, analyser: analyser, embedder: embedder}
 }
 
 func (s *DreamService) CreateDream(title, rawText string) (*dream.Dream, error) {
@@ -58,6 +59,16 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 	}
 
 	err = s.repo.SaveDreamAnalysis(*analysis)
+	if err != nil {
+		return nil, err
+	}
+
+	embedding, err := s.embedder.Embed(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repo.SaveDreamEmbedding(d.ID, "nomic-embed-text-v1.5", embedding)
 	if err != nil {
 		return nil, err
 	}

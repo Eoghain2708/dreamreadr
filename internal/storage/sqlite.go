@@ -2,6 +2,9 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/binary"
+	"fmt"
+	"math"
 	"strings"
 
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
@@ -333,4 +336,77 @@ func uniqueStrings(values []string) []string {
 		result = append(result, word)
 	}
 	return result
+}
+
+func (sr *SQLRepository) SaveDreamEmbedding(dreamID, model string, embedding []float32) error {
+	if err := sr.DeleteDreamEmbedding(dreamID); err != nil {
+		return err
+	}
+
+	_, err := sr.db.Exec(`
+		INSERT INTO dream_embeddings (
+			dream_id, model, dimensions, embedding
+		) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(dream_id) DO UPDATE SET 
+		 	model = excluded.model,
+			dimensions = excluded.dimensions,
+			embedding = excluded.embedding
+	`, dreamID, model, len(embedding), floatsToBytes(embedding))
+
+	return err
+}
+
+func (sr *SQLRepository) DeleteDreamEmbedding(dreamID string) error {
+	_, err := sr.db.Exec(`
+		DELETE FROM dream_embeddings
+		WHERE dream_id = ?
+	`, dreamID)
+
+	return err
+}
+
+func (sr *SQLRepository) GetDreamEmbedding(dreamID string) ([]float32, error) {
+	var embedding []byte
+	err := sr.db.QueryRow(`
+		SELECT embedding
+		FROM dream_embeddings
+		WHERE dream_id = ?
+	`, dreamID).Scan(&embedding)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := bytesToFloats(embedding)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func floatsToBytes(values []float32) []byte {
+	buf := make([]byte, len(values)*4)
+
+	for i, value := range values {
+		bits := math.Float32bits(value)
+		binary.LittleEndian.PutUint32(buf[i*4:], bits)
+	}
+
+	return buf
+}
+
+func bytesToFloats(data []byte) ([]float32, error) {
+	if len(data)%4 != 0 {
+		return nil, fmt.Errorf("invalid embedding byte length")
+	}
+
+	values := make([]float32, len(data)/4)
+
+	for i := range values {
+		bits := binary.LittleEndian.Uint32(data[i*4:])
+		values[i] = math.Float32frombits(bits)
+	}
+
+	return values, nil
 }
