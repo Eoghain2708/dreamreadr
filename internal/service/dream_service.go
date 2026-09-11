@@ -68,7 +68,7 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 		return nil, err
 	}
 
-	err = s.repo.SaveDreamEmbedding(d.ID, "nomic-embed-text-v1.5", embedding)
+	err = s.repo.SaveDreamEmbedding(*embedding)
 	if err != nil {
 		return nil, err
 	}

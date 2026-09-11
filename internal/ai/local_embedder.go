@@ -15,14 +15,19 @@ import (
 type LocalLLMEmbedder struct {
 	Client  *http.Client
 	BaseURL string
+	Model   string
 }
 
-func NewLocalLLMEmbedder(url string) (*LocalLLMEmbedder, error) {
+func NewLocalLLMEmbedder(url, model string) (*LocalLLMEmbedder, error) {
 	if strings.TrimSpace(url) == "" {
 		return nil, fmt.Errorf("url is blank")
 	}
 
-	return &LocalLLMEmbedder{Client: &http.Client{}, BaseURL: url}, nil
+	if strings.TrimSpace(model) == "" {
+		return nil, fmt.Errorf("model is blank")
+	}
+
+	return &LocalLLMEmbedder{Client: &http.Client{}, BaseURL: url, Model: model}, nil
 }
 
 type localLLMEmbedderResponse struct {
@@ -37,7 +42,7 @@ type embeddingRequest struct {
 	Input string `json:"input"`
 }
 
-func (e *LocalLLMEmbedder) Embed(ctx context.Context, d dream.Dream) ([]float32, error) {
+func (e *LocalLLMEmbedder) Embed(ctx context.Context, d dream.Dream) (*dream.DreamEmbedding, error) {
 	reqBody := embeddingRequest{
 		Input: d.RawText,
 	}
@@ -76,6 +81,13 @@ func (e *LocalLLMEmbedder) Embed(ctx context.Context, d dream.Dream) ([]float32,
 		return nil, fmt.Errorf("embedding contained no data")
 	}
 
-	return result.Data[0].Embedding, nil
+	embedding := result.Data[0].Embedding
+
+	return &dream.DreamEmbedding{
+		DreamID:    d.ID,
+		Model:      e.Model,
+		Dimensions: len(embedding),
+		Embedding:  embedding,
+	}, nil
 
 }

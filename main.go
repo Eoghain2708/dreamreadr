@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("cannot create analyser")
 	}
 
-	embedder, err = ai.NewLocalLLMEmbedder("http://127.0.0.1:8081")
+	embedder, err = ai.NewLocalLLMEmbedder("http://127.0.0.1:8081", "nomic-ai/nomic-embed-text-v1.5-GGUF:Q4_K_M")
 	if err != nil {
 		log.Fatalf("cannot create embedder")
 	}

@@ -338,8 +338,8 @@ func uniqueStrings(values []string) []string {
 	return result
 }
 
-func (sr *SQLRepository) SaveDreamEmbedding(dreamID, model string, embedding []float32) error {
-	if err := sr.DeleteDreamEmbedding(dreamID); err != nil {
+func (sr *SQLRepository) SaveDreamEmbedding(de dream.DreamEmbedding) error {
+	if err := sr.DeleteDreamEmbedding(de.DreamID); err != nil {
 		return err
 	}
 
@@ -351,7 +351,7 @@ func (sr *SQLRepository) SaveDreamEmbedding(dreamID, model string, embedding []f
 		 	model = excluded.model,
 			dimensions = excluded.dimensions,
 			embedding = excluded.embedding
-	`, dreamID, model, len(embedding), floatsToBytes(embedding))
+	`, de.DreamID, de.Model, len(de.Embedding), floatsToBytes(de.Embedding))
 
 	return err
 }
@@ -365,24 +365,27 @@ func (sr *SQLRepository) DeleteDreamEmbedding(dreamID string) error {
 	return err
 }
 
-func (sr *SQLRepository) GetDreamEmbedding(dreamID string) ([]float32, error) {
-	var embedding []byte
+func (sr *SQLRepository) GetDreamEmbedding(dreamID string) (*dream.DreamEmbedding, error) {
+	var de dream.DreamEmbedding
+	var embeddingBytes []byte
 	err := sr.db.QueryRow(`
-		SELECT embedding
+		SELECT model, dimensions, embedding
 		FROM dream_embeddings
 		WHERE dream_id = ?
-	`, dreamID).Scan(&embedding)
+	`, dreamID).Scan(&de.Model, &de.Dimensions, &embeddingBytes)
 
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := bytesToFloats(embedding)
+	embedding, err := bytesToFloats(embeddingBytes)
 	if err != nil {
 		return nil, err
 	}
+	de.DreamID = dreamID
+	de.Embedding = embedding
 
-	return result, nil
+	return &de, nil
 }
 
 func floatsToBytes(values []float32) []byte {
@@ -409,4 +412,40 @@ func bytesToFloats(data []byte) ([]float32, error) {
 	}
 
 	return values, nil
+}
+
+func (sr *SQLRepository) ListDreamEmbeddings() ([]dream.DreamEmbedding, error) {
+	rows, err := sr.db.Query(`
+	SELECT dream_id, model, dimensions, embedding
+	FROM dream_embeddings
+	`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var result []dream.DreamEmbedding
+
+	for rows.Next() {
+		var de dream.DreamEmbedding
+		var embeddingBytes []byte
+		err := rows.Scan(&de.DreamID, &de.Model, &de.Dimensions, &embeddingBytes)
+		if err != nil {
+			return nil, err
+		}
+		de.Embedding, err = bytesToFloats(embeddingBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, de)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
