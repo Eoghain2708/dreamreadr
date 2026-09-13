@@ -57,9 +57,16 @@ type DreamRepository interface {
 	GetDreamAnalysis(dreamID string) (*DreamAnalysis, error)
 	DeleteDreamAnalysis(dreamID string) error
 
-	SaveDreamEmbedding(dreamID, model string, embedding []float32) error
-	GetDreamEmbedding(dreamID string) ([]float32, error)
+	SaveDreamEmbedding(de DreamEmbedding) error
+	GetDreamEmbedding(dreamID string) (*DreamEmbedding, error)
 	DeleteDreamEmbedding(dreamID string) error
+	ListDreamEmbeddings() ([]DreamEmbedding, error)
+
+	GetTopLocations(limit int) ([]FeatureCount, error)
+	GetTopEmotions(limit int) ([]FeatureCount, error)
+	GetTopPeople(limit int) ([]FeatureCount, error)
+	GetTopSymbols(limit int) ([]FeatureCount, error)
+	GetTopThemes(limit int) ([]FeatureCount, error)
 }
 
 type DreamAnalyser interface {
@@ -80,6 +87,13 @@ func (a *FakeAnalyser) Analyse(ctx context.Context, d Dream) (*DreamAnalysis, er
 	}, nil
 }
 
+type DreamEmbedding struct {
+	DreamID    string
+	Model      string
+	Dimensions int
+	Embedding  []float32
+}
+
 type DreamEmbedder interface {
-	Embed(ctx context.Context, d Dream) ([]float32, error)
+	Embed(ctx context.Context, d Dream) (*DreamEmbedding, error)
 }
