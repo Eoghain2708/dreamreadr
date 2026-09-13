@@ -61,6 +61,12 @@ type DreamRepository interface {
 	GetDreamEmbedding(dreamID string) (*DreamEmbedding, error)
 	DeleteDreamEmbedding(dreamID string) error
 	ListDreamEmbeddings() ([]DreamEmbedding, error)
+
+	GetTopLocations(limit int) ([]FeatureCount, error)
+	GetTopEmotions(limit int) ([]FeatureCount, error)
+	GetTopPeople(limit int) ([]FeatureCount, error)
+	GetTopSymbols(limit int) ([]FeatureCount, error)
+	GetTopThemes(limit int) ([]FeatureCount, error)
 }
 
 type DreamAnalyser interface {

@@ -119,29 +119,6 @@ func (f *fakeDreamRepository) SaveDreamEmbedding(embedding dream.DreamEmbedding)
 	return nil
 }
 
-func (f *fakeDreamRepository) DeleteDreamAnalysis(dreamID string) error {
-	return nil
-}
-
-var embeddings = map[string]dream.DreamEmbedding{
-	"a": {
-		DreamID:   "a",
-		Embedding: []float32{1, 0},
-	},
-	"b": {
-		DreamID:   "b",
-		Embedding: []float32{1, 0},
-	},
-	"c": {
-		DreamID:   "c",
-		Embedding: []float32{0.8, 0.6},
-	},
-	"d": {
-		DreamID:   "d",
-		Embedding: []float32{-1, 0},
-	},
-}
-
 func TestFindSimilarDreams(t *testing.T) {
 	repo := &fakeDreamRepository{
 		dreams: map[string]dream.Dream{
@@ -170,9 +147,7 @@ func TestFindSimilarDreams(t *testing.T) {
 		},
 	}
 
-	service := &DreamService{
-		repo: repo,
-	}
+	service := &DreamService{dreams: repo, embeddings: repo}
 
 	results, err := service.FindSimilarDreams(
 		context.Background(),

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
@@ -9,13 +10,22 @@ import (
 )
 
 type DreamService struct {
-	repo     dream.DreamRepository
+	dreams     DreamRepository
+	analyses   AnalysisRepository
+	embeddings EmbeddingRepository
+	features   FeatureRepository
+
 	analyser dream.DreamAnalyser
 	embedder dream.DreamEmbedder
 }
 
-func NewDreamService(repo dream.DreamRepository, analyser dream.DreamAnalyser, embedder dream.DreamEmbedder) *DreamService {
-	return &DreamService{repo: repo, analyser: analyser, embedder: embedder}
+func NewDreamService(dreams DreamRepository,
+	analyses AnalysisRepository,
+	embeddings EmbeddingRepository,
+	features FeatureRepository,
+	analyser dream.DreamAnalyser,
+	embedder dream.DreamEmbedder) *DreamService {
+	return &DreamService{dreams, analyses, embeddings, features, analyser, embedder}
 }
 
 func (s *DreamService) CreateDream(title, rawText string) (*dream.Dream, error) {
@@ -24,7 +34,7 @@ func (s *DreamService) CreateDream(title, rawText string) (*dream.Dream, error) 
 		return nil, err
 	}
 
-	if err := s.repo.CreateDream(*d); err != nil {
+	if err := s.dreams.CreateDream(*d); err != nil {
 		return nil, err
 	}
 
@@ -32,15 +42,15 @@ func (s *DreamService) CreateDream(title, rawText string) (*dream.Dream, error) 
 }
 
 func (s *DreamService) ListDreams() ([]dream.Dream, error) {
-	return s.repo.ListDreams()
+	return s.dreams.ListDreams()
 }
 
 func (s *DreamService) DeleteDream(id string) error {
-	return s.repo.DeleteDream(id)
+	return s.dreams.DeleteDream(id)
 }
 
 func (s *DreamService) GetDream(id string) (dream.Dream, error) {
-	return s.repo.GetDream(id)
+	return s.dreams.GetDream(id)
 }
 
 func generateID() string {
@@ -48,7 +58,7 @@ func generateID() string {
 }
 
 func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.DreamAnalysis, error) {
-	d, err := s.repo.GetDream(id)
+	d, err := s.dreams.GetDream(id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +68,7 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 		return nil, err
 	}
 
-	err = s.repo.SaveDreamAnalysis(*analysis)
+	err = s.analyses.SaveDreamAnalysis(*analysis)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +78,9 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 		return nil, err
 	}
 
-	err = s.repo.SaveDreamEmbedding(*embedding)
+	fmt.Println("saving embedding for dream")
+
+	err = s.embeddings.SaveDreamEmbedding(*embedding)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +89,7 @@ func (s *DreamService) AnalyseDream(ctx context.Context, id string) (*dream.Drea
 }
 
 func (s *DreamService) GetDreamAnalysis(dreamID string) (*dream.DreamAnalysis, error) {
-	analysis, err := s.repo.GetDreamAnalysis(dreamID)
+	analysis, err := s.analyses.GetDreamAnalysis(dreamID)
 	if err != nil {
 		return nil, err
 	}

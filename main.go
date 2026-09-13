@@ -38,7 +38,7 @@ func main() {
 		log.Fatalf("cannot create embedder")
 	}
 
-	ds := service.NewDreamService(repo, analyser, embedder)
+	ds := service.NewDreamService(repo, repo, repo, repo, analyser, embedder)
 	cmd.SetDreamService(ds)
 	cmd.Execute()
 }

@@ -30,12 +30,12 @@ func (ds *DreamService) FindSimilarDreams(ctx context.Context, dreamID string, l
 	}
 	var similarDreams []SimilarDream
 
-	embedding, err := ds.repo.GetDreamEmbedding(dreamID)
+	embedding, err := ds.embeddings.GetDreamEmbedding(dreamID)
 	if err != nil {
 		return nil, err
 	}
 
-	otherEmbeddings, err := ds.repo.ListDreamEmbeddings()
+	otherEmbeddings, err := ds.embeddings.ListDreamEmbeddings()
 	if err != nil {
 		return nil, err
 	}
