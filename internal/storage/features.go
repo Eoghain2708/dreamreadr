@@ -71,3 +71,57 @@ func (sr *SQLRepository) GetTopPeople(limit int) ([]dream.FeatureCount, error) {
 func (sr *SQLRepository) GetTopEmotions(limit int) ([]dream.FeatureCount, error) {
 	return sr.getFeatureCount(emotions, limit)
 }
+
+func (sr *SQLRepository) findDreamsWithFeature(f feature, value string) ([]dream.Dream, error) {
+	query := fmt.Sprintf(`
+		SELECT dream_id from %s 
+		WHERE %s = ?
+	`, f.table, f.name)
+
+	rows, err := sr.db.Query(query, value)
+	if err != nil {
+		return nil, err
+	}
+
+	var res []dream.Dream
+
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		dream, err := sr.GetDream(id)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, dream)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (sr *SQLRepository) FindDreamsWithEmotion(s string) ([]dream.Dream, error) {
+	return sr.findDreamsWithFeature(emotions, s)
+}
+
+func (sr *SQLRepository) FindDreamsWithSymbol(s string) ([]dream.Dream, error) {
+	return sr.findDreamsWithFeature(symbols, s)
+}
+
+func (sr *SQLRepository) FindDreamsWithPerson(s string) ([]dream.Dream, error) {
+	return sr.findDreamsWithFeature(people, s)
+}
+
+func (sr *SQLRepository) FindDreamsWithTheme(s string) ([]dream.Dream, error) {
+	return sr.findDreamsWithFeature(themes, s)
+}
+
+func (sr *SQLRepository) FindDreamsWithLocation(s string) ([]dream.Dream, error) {
+	return sr.findDreamsWithFeature(locations, s)
+}

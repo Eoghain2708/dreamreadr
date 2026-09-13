@@ -28,4 +28,10 @@ type FeatureRepository interface {
 	GetTopPeople(limit int) ([]dream.FeatureCount, error)
 	GetTopSymbols(limit int) ([]dream.FeatureCount, error)
 	GetTopThemes(limit int) ([]dream.FeatureCount, error)
+
+	FindDreamsWithEmotion(s string) ([]dream.Dream, error)
+	FindDreamsWithLocation(s string) ([]dream.Dream, error)
+	FindDreamsWithPerson(s string) ([]dream.Dream, error)
+	FindDreamsWithSymbol(s string) ([]dream.Dream, error)
+	FindDreamsWithTheme(s string) ([]dream.Dream, error)
 }
