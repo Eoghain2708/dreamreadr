@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
 )
@@ -16,7 +17,7 @@ var (
 	locations = feature{"location", "dream_locations"}
 	themes    = feature{"theme", "dream_themes"}
 	emotions  = feature{"emotion", "dream_emotions"}
-	people    = feature{"people", "dream_people"}
+	people    = feature{"person", "dream_people"}
 )
 
 func (sr *SQLRepository) getFeatureCount(f feature, limit int) ([]dream.FeatureCount, error) {
@@ -34,6 +35,8 @@ func (sr *SQLRepository) getFeatureCount(f feature, limit int) ([]dream.FeatureC
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var res []dream.FeatureCount
 
 	for rows.Next() {
@@ -42,6 +45,7 @@ func (sr *SQLRepository) getFeatureCount(f feature, limit int) ([]dream.FeatureC
 			return nil, err
 		}
 
+		fc.Type = defineFeatureType(f)
 		res = append(res, fc)
 	}
 
@@ -50,6 +54,23 @@ func (sr *SQLRepository) getFeatureCount(f feature, limit int) ([]dream.FeatureC
 	}
 
 	return res, nil
+}
+
+func defineFeatureType(fc feature) dream.FeatureType {
+	switch fc {
+	case symbols:
+		return dream.Symbol
+	case emotions:
+		return dream.Emotion
+	case people:
+		return dream.Person
+	case themes:
+		return dream.Theme
+	case locations:
+		return dream.Location
+	default:
+		return dream.Unknown
+	}
 }
 
 func (sr *SQLRepository) GetTopLocations(limit int) ([]dream.FeatureCount, error) {
@@ -83,6 +104,8 @@ func (sr *SQLRepository) findDreamsWithFeature(f feature, value string) ([]dream
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var res []dream.Dream
 
 	for rows.Next() {
@@ -97,6 +120,71 @@ func (sr *SQLRepository) findDreamsWithFeature(f feature, value string) ([]dream
 		}
 
 		res = append(res, dream)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (sr *SQLRepository) FindDreams(filters []dream.FeatureFilter) ([]dream.Dream, error) {
+	var conditions []string
+	var args []any
+
+	for _, f := range filters {
+		conditions = append(conditions, "(feature_type = ? AND value LIKE ?)")
+		args = append(args, strings.ToLower(string(f.Type)), strings.ToLower("%"+f.Value+"%"))
+	}
+
+	query := fmt.Sprintf(`
+		WITH features AS (
+			SELECT dream_id, 'symbol' AS feature_type, symbol as value
+			FROM dream_symbols
+			UNION ALL
+			SELECT dream_id, 'theme', theme as value
+			FROM dream_themes
+			UNION ALL
+			SELECT dream_id, 'person', person as value
+			FROM dream_people
+			UNION ALL
+			SELECT dream_id, 'location', location as value
+			FROM dream_locations
+			UNION ALL
+			SELECT dream_id, 'emotion', emotion as value
+			FROM dream_emotions
+		)
+		SELECT d.id, d.title, d.raw_text
+		FROM dreams d
+		JOIN (
+			SELECT dream_id
+			FROM features
+			WHERE %s
+			GROUP BY dream_id
+			HAVING COUNT(*) = ?
+		) matching
+		 ON matching.dream_id = d.id
+	`, strings.Join(conditions, " OR "))
+
+	args = append(args, len(filters))
+
+	rows, err := sr.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var res []dream.Dream
+
+	for rows.Next() {
+		var d dream.Dream
+		if err := rows.Scan(&d.ID, &d.Title, &d.RawText); err != nil {
+			return nil, err
+		}
+
+		res = append(res, d)
 	}
 
 	if err := rows.Err(); err != nil {
