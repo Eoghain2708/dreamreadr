@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 
 	"github.com/Eoghain2708/dreamreadr/internal/dream"
@@ -106,6 +107,9 @@ func (sr *SQLRepository) GetDreamAnalysis(dreamID string) (*dream.DreamAnalysis,
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
