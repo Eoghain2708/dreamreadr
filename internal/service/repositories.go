@@ -34,4 +34,8 @@ type FeatureRepository interface {
 	FindDreamsWithPerson(s string) ([]dream.Dream, error)
 	FindDreamsWithSymbol(s string) ([]dream.Dream, error)
 	FindDreamsWithTheme(s string) ([]dream.Dream, error)
+	FindDreams(f []dream.FeatureFilter) ([]dream.Dream, error)
+
+	FindCommonCoOccs(l int) ([]dream.FeatureCooccurence, error)
+	FindOverlappingFeatures(v []string) ([]dream.Dream, error)
 }
