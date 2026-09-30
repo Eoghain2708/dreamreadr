@@ -29,6 +29,7 @@ func NewCreateDreamView(ds *service.DreamService, n nav.Navigator) (*CreateDream
 	)
 
 	contentInput := widget.NewMultiLineEntry()
+	contentInput.Wrapping = fyne.TextWrapWord
 
 	var err error
 	submitButton := container.NewHBox(

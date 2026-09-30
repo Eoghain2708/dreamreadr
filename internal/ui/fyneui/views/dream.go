@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -15,9 +16,9 @@ import (
 
 type DreamView struct {
 	service   *service.DreamService
-	container *fyne.Container
-	dream     dream.Dream
-	analysis  dream.DreamAnalysis
+	container *container.Scroll
+	dream     *dream.Dream
+	analysis  *dream.DreamAnalysis
 }
 
 func NewDreamView(ds *service.DreamService, n nav.Navigator, dreamID string) (*DreamView, error) {
@@ -28,70 +29,145 @@ func NewDreamView(ds *service.DreamService, n nav.Navigator, dreamID string) (*D
 
 	v := &DreamView{
 		service: ds,
-		dream:   d,
+		dream:   &d,
 	}
 
-	analysis, err := ds.GetDreamAnalysis(v.dream.ID)
+	analysis, err := ds.GetDreamAnalysis(dreamID)
 	if err != nil {
 		return nil, err
 	}
 
-	var button widget.Button
-	label := widget.NewLabel(v.dream.RawText)
-	label.Wrapping = fyne.TextWrapWord
+	v.analysis = analysis
 
-	var analysisText string
+	dreamLabel := widget.NewLabel(v.dream.RawText)
+	dreamLabel.Wrapping = fyne.TextWrapWord
 
-	if analysis == nil {
-		analysisText = "This dream has not been analysed yet"
-	} else {
-		analysisText = analysis.Summary
+	analysisSummary := widget.NewLabel("")
+	analysisSummary.Wrapping = fyne.TextWrapWord
+	analysisContent := widget.NewCard("Summary", "", analysisSummary)
+
+	emotionsCard, emotionsContent := makeFeatureSection("Emotions")
+	themesCard, themesContent := makeFeatureSection("Themes")
+	locationsCard, locationsContent := makeFeatureSection("Locations")
+	peopleCard, peopleContent := makeFeatureSection("People")
+	symbolsCard, symbolsContent := makeFeatureSection("Symbols")
+
+	// This is the part of the page that we'll replace/update.
+	analysisContainer := container.NewVBox(
+		widget.NewLabel("This dream has not been analysed yet"),
+	)
+
+	// If we already have an analysis, populate everything now.
+	if analysis != nil {
+		analysisSummary.SetText(analysis.Summary)
+
+		populateFeatureSection(emotionsContent, analysis.Emotions)
+		populateFeatureSection(themesContent, analysis.Themes)
+		populateFeatureSection(locationsContent, analysis.Locations)
+		populateFeatureSection(peopleContent, analysis.People)
+		populateFeatureSection(symbolsContent, analysis.Symbols)
+
+		analysisContainer.Objects = []fyne.CanvasObject{
+			analysisContent,
+			emotionsCard,
+			themesCard,
+			locationsCard,
+			peopleCard,
+			symbolsCard,
+		}
+
+		analysisContainer.Refresh()
 	}
 
-	analysisLabel := widget.NewLabel(analysisText)
-	analysisLabel.Wrapping = fyne.TextWrapWord
+	var analyseButton *widget.Button
 
-	if analysis == nil {
-		button = *widget.NewButton("Analyse", func() {
-			analysis, err = ds.AnalyseDream(context.Background(), v.dream.ID)
-			if err != nil {
-				return
-			}
-			analysisLabel.SetText(analysis.Summary)
-			analysisLabel.Refresh()
-		})
-	} else {
-		button = *widget.NewButton("Re-analyse", func() {
-			analysis, err = ds.AnalyseDream(context.Background(), v.dream.ID)
-			if err != nil {
-				return
-			}
-			analysisLabel.SetText(analysis.Summary)
-			analysisLabel.Refresh()
-		})
+	analyseButton = widget.NewButton("Analyse", func() {
+		analysis, err := ds.AnalyseDream(
+			context.Background(),
+			dreamID,
+		)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		v.analysis = analysis
+
+		// Update the summary.
+		analysisSummary.SetText(analysis.Summary)
+
+		// Update the feature sections.
+		populateFeatureSection(emotionsContent, analysis.Emotions)
+		populateFeatureSection(themesContent, analysis.Themes)
+		populateFeatureSection(locationsContent, analysis.Locations)
+		populateFeatureSection(peopleContent, analysis.People)
+		populateFeatureSection(symbolsContent, analysis.Symbols)
+
+		// Replace "not analysed" with the actual analysis UI.
+		analysisContainer.Objects = []fyne.CanvasObject{
+			analysisContent,
+			emotionsCard,
+			themesCard,
+			locationsCard,
+			peopleCard,
+			symbolsCard,
+		}
+
+		analysisContainer.Refresh()
+
+		analyseButton.SetText("Re-analyse")
+	})
+
+	if analysis != nil {
+		analyseButton.SetText("Re-analyse")
 	}
 
-	v.container = container.NewVBox(
+	content := container.NewVBox(
 		container.NewHBox(
 			widget.NewButton("Back", n.ShowDreams),
 			widget.NewButton("Delete", func() {
 				_ = ds.DeleteDream(v.dream.ID)
 				n.ShowDreams()
-			})),
-		container.NewVBox(
-			widget.NewLabel(fmt.Sprintf("%s - %s", v.dream.Title, helpers.FormatCreatedAt(v.dream.CreatedAt))),
-			label,
+			}),
+			analyseButton,
 		),
+
 		container.NewVBox(
-			widget.NewLabel("Analysis"),
-			analysisLabel,
-			&button,
+			widget.NewLabel(
+				fmt.Sprintf(
+					"%s - %s",
+					v.dream.Title,
+					helpers.FormatCreatedAt(v.dream.CreatedAt),
+				),
+			),
+			dreamLabel,
 		),
+
+		analysisContainer,
 	)
+
+	v.container = container.NewVScroll(content)
 
 	return v, nil
 }
 
 func (d *DreamView) CanvasObject() fyne.CanvasObject {
 	return d.container
+}
+
+func makeFeatureSection(title string) (*widget.Card, *fyne.Container) {
+	content := container.NewVBox()
+	card := widget.NewCard(title, "", content)
+
+	return card, content
+}
+
+func populateFeatureSection(content *fyne.Container, values []string) {
+	content.Objects = nil
+
+	for _, value := range values {
+		content.Add(widget.NewLabel("• " + value))
+	}
+
+	content.Refresh()
 }

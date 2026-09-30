@@ -39,14 +39,18 @@ func NewDreamListView(ds *service.DreamService, n nav.Navigator) (*DreamListView
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			button := obj.(*widget.Button)
+			button.Alignment = widget.ButtonAlignCenter
 			dream := v.dreams[id]
-			button.SetText(fmt.Sprintf("%s - %s", v.dreams[id].Title, helpers.FormatCreatedAt(v.dreams[id].CreatedAt)))
+			button.SetText(fmt.Sprintf("%s | %s", v.dreams[id].Title, helpers.FormatCreatedAt(v.dreams[id].CreatedAt)))
 			button.OnTapped = func() {
 				n.ShowDream(dream.ID)
 			}
 
 		},
 	)
+
+	scrollableList := container.NewVScroll(list)
+
 	footer := container.NewHBox(
 		widget.NewButton("Insights", n.ShowInsights),
 		widget.NewButton("+ New Dream", n.CreateDream),
@@ -58,7 +62,7 @@ func NewDreamListView(ds *service.DreamService, n nav.Navigator) (*DreamListView
 		footer,
 		nil,
 		nil,
-		list,
+		scrollableList,
 	)
 
 	return v, nil
@@ -66,4 +70,10 @@ func NewDreamListView(ds *service.DreamService, n nav.Navigator) (*DreamListView
 
 func (v *DreamListView) CanvasObject() fyne.CanvasObject {
 	return v.container
+}
+
+type DreamListItem struct {
+	widget.BaseWidget
+	button   *widget.Button
+	onTapped func()
 }
